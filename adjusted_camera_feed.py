@@ -3,6 +3,9 @@ import tkinter as tk
 import numpy as np
 from PIL import Image, ImageTk
 from modified_color_filters import rgb_to_lms, filter_options
+import serial
+import time
+
 
 # Camera Feed class
 class Camera_Feed:
@@ -11,7 +14,7 @@ class Camera_Feed:
         self.cap = cv2.VideoCapture(video_source)
         # set Video Frame Width
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        # set Video Fram Height
+        # set Video Frame Height
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
         self.root = tk.Tk()
         self.root.title("Color Blindness Simulator")
@@ -19,9 +22,11 @@ class Camera_Feed:
         self.init_gui()
         # Video Filter Options Menu
         self.filter = filter_options[self.filter_var.get()]
+        self.serial_conn = serial.Serial("COM3", 9600) # comment out to test filters on laptop camera
+        time.sleep(2)
         self.update()
-     
-     # Create canvas to hold Video Feed
+
+    # Create canvas to hold Video Feed
     def init_gui(self):
         # Define color scheme
         bg_color = "springgreen"
@@ -45,12 +50,15 @@ class Camera_Feed:
         filter_label = tk.Label(filter_frame, text="Filter Options", font=("Times", 20), fg=fg_color, bg=bg_color)
         filter_label.pack(side="top", pady=10)
         self.filter_var = tk.StringVar(value=list(filter_options.keys())[0])
-        self.filter_menu = tk.OptionMenu(filter_frame, self.filter_var, *filter_options.keys(), command=self.update_filter)
-        self.filter_menu.config(bg=bg_color, fg=fg_color, activebackground=active_bg_color, activeforeground=active_fg_color)
+        self.filter_menu = tk.OptionMenu(filter_frame, self.filter_var, *filter_options.keys(),
+                                         command=self.update_filter)
+        self.filter_menu.config(bg=bg_color, fg=fg_color, activebackground=active_bg_color,
+                                activeforeground=active_fg_color)
         self.filter_menu.pack(side="top", pady=10)
 
         # Create quit button
-        self.quit_button = tk.Button(main_frame, text="Quit", font=("Times", 15), bg=bg_color, fg=active_fg_color, command=self.quit)
+        self.quit_button = tk.Button(main_frame, text="Quit", font=("Times", 15), bg=bg_color, fg=active_fg_color,
+                                     command=self.quit)
         self.quit_button.pack(side="bottom", pady=10)
 
     # Update Method
@@ -80,11 +88,23 @@ class Camera_Feed:
     def update_filter(self, value):
         # When a new filter is selected, move to this filter option
         self.filter = filter_options[value]
-    
+        # comment code block out to test filters on laptop
+        if value == "Protanopia" or value == "Protanomaly":
+            self.serial_conn.write(b'P')
+        elif value == "Deuteranopia" or value == "Deuteranomaly":
+            self.serial_conn.write(b'D')
+        elif value == "Tritanopia" or value == "Tritanomaly":
+            self.serial_conn.write(b'T')
+        elif value == "Normal":
+            self.serial_conn.write(b'N')
+
     # End Video Feed & GUI when selected Method
     def quit(self):
+        self.serial_conn.close()  # comment out to test filters on laptop
+        self.root.destroy()
         self.cap.release()
         self.root.destroy()
+
 
 ### Main Program ###
 if __name__ == "__main__":
